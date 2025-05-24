@@ -29,11 +29,23 @@ def is_user_active(user):
 # Function to check if screen is locked
 def is_screen_locked():
     """
-    Check if the screen is currently locked
+    Check if the screen is currently locked using multiple methods
     """
     try:
+        # First try using pmset
+        result = subprocess.run(['pmset', '-g', 'sleep'], capture_output=True, text=True)
+        if 'sleep 1' in result.stdout:
+            return True
+
+        # Also check using ioreg
         result = subprocess.run(['ioreg', '-r', '-k', 'DisplayPowerState'], capture_output=True, text=True)
-        return 'DisplayPowerState = 0' in result.stdout
+        if 'DisplayPowerState = 0' in result.stdout:
+            return True
+
+        # Check if screensaver is active
+        result = subprocess.run(['pgrep', '-f', 'ScreenSaverEngine.app'], capture_output=True, text=True)
+        return result.returncode == 0
+
     except Exception as e:
         print(f"Error checking screen lock status: {e}")
         return False
@@ -58,8 +70,20 @@ def lock_screen():
 # Function to check if user is locked
 def is_user_locked():
     try:
+        # Check if screensaver is active
         result = subprocess.run(['pgrep', '-f', 'ScreenSaverEngine.app'], capture_output=True, text=True)
+        if result.returncode == 0:
+            return True
+
+        # Check if display is sleeping
+        result = subprocess.run(['ioreg', '-r', '-k', 'DisplayPowerState'], capture_output=True, text=True)
+        if 'DisplayPowerState = 0' in result.stdout:
+            return True
+
+        # Check if loginwindow is active (user not logged in)
+        result = subprocess.run(['pgrep', '-f', 'loginwindow.app'], capture_output=True, text=True)
         return result.returncode == 0
+
     except Exception as e:
         print(f"Error checking lock status: {e}")
         return False
