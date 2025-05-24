@@ -36,10 +36,16 @@ def is_user_active(user):
             print(f"User {user} has active windows")
             return True
 
-        # Check if user has any active sessions
-        result = subprocess.run(['lslogin', '-u', user], capture_output=True, text=True)
+        # Check if user is the current console user
+        result = subprocess.run(['stat', '-f%Su', '/dev/console'], capture_output=True, text=True)
         if user in result.stdout:
-            print(f"User {user} has active sessions")
+            print(f"User {user} is the console user")
+            return True
+
+        # Check if user has any active terminal sessions
+        result = subprocess.run(['who', '-u'], capture_output=True, text=True)
+        if user in result.stdout:
+            print(f"User {user} has active terminal sessions")
             return True
 
         print(f"User {user} is inactive")
