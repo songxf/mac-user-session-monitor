@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 
 # Configuration constants
 TARGET_USER = "xsong"
-MAX_SESSION_TIME = 10  # Maximum allowed session time in minutes
+INITIAL_MAX_SESSION_TIME = 0.2  # Initial maximum allowed session time in minutes
 COOLDOWN_PERIOD = 60   # Cooldown period in seconds after screen lock
+RELAXATION_PERIOD = 300  # Period in seconds to gradually increase session time back to normal
 
 # Function to check if user is actively using mouse/keyboard
 def is_user_active(user):
@@ -41,13 +42,12 @@ def is_screen_locked():
 # Function to lock the screen
 def lock_screen():
     """
-    Lock the screen using pmset
+    Lock the screen using osascript
     """
     try:
-        subprocess.run(['pmset', 'displaysleepnow'])
+        # Use AppleScript to lock the screen
+        subprocess.run(['osascript', '-e', 'tell application "System Events" to keystroke "q" using {command down, control down}'])
     except Exception as e:
-        print(f"Error locking screen: {e}")
-    except subprocess.CalledProcessError as e:
         print(f"Error locking screen: {e}")
 
 # Function to check if user is locked
@@ -62,9 +62,14 @@ def is_user_locked():
 def main():
     print("\nStarting user session monitor...")
     print(f"Monitoring user: {TARGET_USER}")
-    print(f"Max session time: {MAX_SESSION_TIME} minutes")
+    print(f"Initial max session time: {INITIAL_MAX_SESSION_TIME} minutes")
     print(f"Cooldown period: {COOLDOWN_PERIOD} seconds")
+    print(f"Relaxation period: {RELAXATION_PERIOD} seconds")
     print("\nCurrent system users:")
+    MAX_SESSION_TIME = INITIAL_MAX_SESSION_TIME  # Current session time limit
+
+    # Track when we last reduced the session time
+    last_reduction_time = None
     
     # Ensure we're running with admin privileges
     if os.geteuid() != 0:
@@ -104,9 +109,24 @@ def main():
                     # Lock screen if activity duration exceeds MAX_SESSION_TIME
                     if activity_duration >= MAX_SESSION_TIME:
                         print(f"\n[{current_time}] {TARGET_USER} has been active for too long. Locking screen...")
-                        subprocess.run(['pmset', 'displaysleepnow'])
+                        lock_screen()
                         user_logged_in = False
                         login_time = None
+                        
+                        # Reduce session time by half
+                        MAX_SESSION_TIME = max(INITIAL_MAX_SESSION_TIME / 2, 0.1)  # Minimum of 0.1 minutes
+                        print(f"[{current_time}] Reduced max session time to {MAX_SESSION_TIME:.1f} minutes")
+                        last_reduction_time = current_time
+                        
+                        # Start relaxation timer
+                        relaxation_timer = current_time + timedelta(seconds=RELAXATION_PERIOD)
+                    else:
+                        # Check if we should relax the session time back to normal
+                        if last_reduction_time and current_time >= relaxation_timer:
+                            MAX_SESSION_TIME = min(MAX_SESSION_TIME * 1.1, INITIAL_MAX_SESSION_TIME)
+                            print(f"[{current_time}] Relaxing max session time to {MAX_SESSION_TIME:.1f} minutes")
+                            if MAX_SESSION_TIME == INITIAL_MAX_SESSION_TIME:
+                                last_reduction_time = None
                 else:
                     # User just became active
                     user_logged_in = True
@@ -121,6 +141,13 @@ def main():
 
             # Wait before next check
             time.sleep(1)
+            
+            # Check if we should relax the session time back to normal
+            if last_reduction_time and current_time >= relaxation_timer:
+                MAX_SESSION_TIME = min(MAX_SESSION_TIME * 1.1, INITIAL_MAX_SESSION_TIME)
+                print(f"[{current_time}] Relaxing max session time to {MAX_SESSION_TIME:.1f} minutes")
+                if MAX_SESSION_TIME == INITIAL_MAX_SESSION_TIME:
+                    last_reduction_time = None
 
         except Exception as e:
             print(f"Error in main loop: {e}")
