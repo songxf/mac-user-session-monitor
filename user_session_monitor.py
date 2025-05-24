@@ -26,6 +26,25 @@ def is_user_active(user):
         print(f"Error checking user activity: {e}")
         return False
 
+# Function to check if Minecraft is running
+def is_minecraft_running():
+    """
+    Check if Minecraft is currently running
+    """
+    try:
+        # Check for Minecraft process
+        result = subprocess.run(['pgrep', '-f', 'Minecraft.app'], capture_output=True, text=True)
+        if result.returncode == 0:
+            print("Minecraft is running")
+            return True
+        
+        # Also check for Java process with Minecraft title
+        result = subprocess.run(['pgrep', '-f', 'java.*minecraft'], capture_output=True, text=True)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"Error checking Minecraft status: {e}")
+        return False
+
 # Function to check if screen is locked
 def is_screen_locked():
     """
@@ -135,6 +154,15 @@ def main():
                     activity_duration = (current_time - login_time).total_seconds() / 60
                     print(f"\n[{current_time}] {TARGET_USER} has been active for {activity_duration:.1f} minutes")
                     
+                    # Check if Minecraft is running
+                    if is_minecraft_running():
+                        print(f"[{current_time}] Minecraft is running - reducing session time")
+                        # Reduce session time by 75% when Minecraft is running
+                        MAX_SESSION_TIME = max(INITIAL_MAX_SESSION_TIME / 4, 0.1)  # Minimum of 0.1 minutes
+                        print(f"[{current_time}] Reduced max session time to {MAX_SESSION_TIME:.1f} minutes")
+                        last_reduction_time = current_time
+                        relaxation_timer = current_time + timedelta(seconds=RELAXATION_PERIOD)
+                    
                     # Lock screen if activity duration exceeds MAX_SESSION_TIME
                     if activity_duration >= MAX_SESSION_TIME:
                         print(f"\n[{current_time}] {TARGET_USER} has been active for too long. Locking screen...")
@@ -142,7 +170,7 @@ def main():
                         user_logged_in = False
                         login_time = None
                         
-                        # Reduce session time by half
+                        # Reduce session time by half when not running Minecraft
                         MAX_SESSION_TIME = max(INITIAL_MAX_SESSION_TIME / 2, 0.1)  # Minimum of 0.1 minutes
                         print(f"[{current_time}] Reduced max session time to {MAX_SESSION_TIME:.1f} minutes")
                         last_reduction_time = current_time
