@@ -42,13 +42,18 @@ def is_screen_locked():
 # Function to lock the screen
 def lock_screen():
     """
-    Lock the screen using osascript
+    Lock the screen using pmset command
     """
     try:
-        # Use AppleScript to lock the screen
-        subprocess.run(['osascript', '-e', 'tell application "System Events" to keystroke "q" using {command down, control down}'])
+        # Use pmset to lock the screen
+        subprocess.run(['pmset', 'displaysleepnow'])
     except Exception as e:
         print(f"Error locking screen: {e}")
+        # Fallback to AppleScript if pmset fails
+        try:
+            subprocess.run(['osascript', '-e', 'tell application "System Events" to keystroke "q" using {command down, control down}'])
+        except Exception as e:
+            print(f"Error using fallback method: {e}")
 
 # Function to check if user is locked
 def is_user_locked():
