@@ -171,7 +171,7 @@ def main():
                         login_time = None
                         
                         # Reduce session time by half when not running Minecraft
-                        MAX_SESSION_TIME = max(INITIAL_MAX_SESSION_TIME / 2, 0.1)  # Minimum of 0.1 minutes
+                        MAX_SESSION_TIME = max(INITIAL_MAX_SESSION_TIME / 2, 0.001)  # Minimum of 0.1 minutes
                         print(f"[{current_time}] Reduced max session time to {MAX_SESSION_TIME:.1f} minutes")
                         last_reduction_time = current_time
                         
