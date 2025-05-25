@@ -62,20 +62,19 @@ def main():
     print("\nMonitoring configuration:")
     print(f"Target user: {TARGET_USER}")
 
-    loop_time = 1
+    loop_time = 2
     today_active_time = 0 
     while True:
         try:
             # Get current active user
             result = subprocess.run(['stat', '-f%Su', '/dev/console'], capture_output=True, text=True)
             active_user = result.stdout.strip()
-            print(f"\nActive user: {active_user} - Target User: {TARGET_USER} with daily active time {today_active_time:.1f} seconds")
+            print(f"\nActive user: {active_user} - Target User: {TARGET_USER} with daily active time {today_active_time:.0f}/{MAX_SESSION_TIME} seconds")
             
             if is_user_active(TARGET_USER):
                 today_active_time = update_daily_active_time(loop_time)
-                print(f"Daily active time: {today_active_time:.1f} seconds")
                 if today_active_time >= MAX_SESSION_TIME:
-                    print(f"Daily active time limit exceeded ({today_active_time:.1f} seconds). Locking screen...")
+                    print(f"Daily active time {today_active_time:.0f} seconds limit exceeded {MAX_SESSION_TIME} seconds. Locking screen...")
                     lock_screen()
             time.sleep(loop_time)
         except KeyboardInterrupt:
