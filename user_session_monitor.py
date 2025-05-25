@@ -23,16 +23,29 @@ def is_user_active(user):
         return False
 
 
+def get_current_date():
+    """Get the current date as a string"""
+    return str(date.today())
+
 def update_daily_active_time(seconds):
     """
     Update the daily active time by the specified number of seconds
     """
     try:
-        current_date = date.today()
-        if str(current_date) not in daily_active_times:
-            daily_active_times[str(current_date)] = 0
-        daily_active_times[str(current_date)] += seconds
-        return daily_active_times[str(current_date)]
+        try:
+            date_str = get_current_date()
+        except Exception as date_error:
+            print(f"Error getting current date: {date_error}")
+            return None
+        
+        # Get or initialize today's active time
+        if date_str not in daily_active_times:
+            daily_active_times[date_str] = 0
+        
+        # Update active time
+        daily_active_times[date_str] += seconds
+        
+        return daily_active_times[date_str]
     except Exception as e:
         print(f"Error updating daily active time: {e}")
         return None
