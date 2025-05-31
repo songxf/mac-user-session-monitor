@@ -8,9 +8,9 @@ from datetime import date
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from dotenv import load_dotenv
+import argparse
 
 # Configuration constants
-TARGET_USER = "hsong"
 MAX_SESSION_TIME = 900  # Maximum allowed session time in seconds
 daily_active_times = {}
 
@@ -94,9 +94,18 @@ def lock_screen():
         except Exception as e:
             print(f"Error using fallback method: {e}")
 
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='User session monitor with Slack notifications')
+    parser.add_argument('-t', '--active-time', type=int, help='Override today\'s active time in seconds')
+    parser.add_argument('-u', '--user', default='hsong', help='User to monitor (default: hsong)')
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
+    
     print("\nStarting user session monitor...")
-    print(f"Monitoring user: {TARGET_USER}")
+    print(f"Monitoring user: {args.user}")
     print(f"Max session time: {MAX_SESSION_TIME} seconds")
     
     if os.geteuid() != 0:
@@ -104,10 +113,17 @@ def main():
         sys.exit(1)
 
     print("\nMonitoring configuration:")
-    print(f"Target user: {TARGET_USER}")
-
+    print(f"Target user: {args.user}")
+    
+    # Initialize today's active time
+    today_active_time = args.active_time if args.active_time is not None else 0
+    
+    # Update TARGET_USER to use the specified user
+    TARGET_USER = args.user
+    update_daily_active_time(today_active_time)
+    print(f"Initial active time: {today_active_time} seconds")
+    
     loop_time = 2
-    today_active_time = 0 
     last_slack_notification = time.time() - 3600
     while True:
         try:
