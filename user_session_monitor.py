@@ -5,11 +5,23 @@ import time
 import sys
 import os
 from datetime import date
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+from dotenv import load_dotenv
 
 # Configuration constants
 TARGET_USER = "hsong"
 MAX_SESSION_TIME = 900  # Maximum allowed session time in seconds
 daily_active_times = {}
+
+# Load environment variables
+load_dotenv()
+
+# Slack configuration
+SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN')  # Set this in your .env file
+print(SLACK_BOT_TOKEN)
+SLACK_CHANNEL = "mac_control"  # Change this to your desired channel
+SLACK_NOTIFICATION_INTERVAL = 600  # Send notifications every 10 minutes (600 seconds)
 
 def is_user_active(user):
     """
@@ -50,6 +62,25 @@ def update_daily_active_time(seconds):
         print(f"Error updating daily active time: {e}")
         return None
 
+def send_slack_notification(message):
+    """
+    Send a notification to Slack channel
+    """
+    if not SLACK_BOT_TOKEN:
+        print("Warning: Slack bot token not configured. Skipping notification.")
+        return
+
+    try:
+        client = WebClient(token=SLACK_BOT_TOKEN)
+        response = client.chat_postMessage(
+            channel=SLACK_CHANNEL,
+            text=message
+        )
+        if not response["ok"]:
+            print(f"Error sending Slack notification: {response['error']}")
+    except SlackApiError as e:
+        print(f"Error sending message: {e}")
+
 def lock_screen():
     """
     Lock the screen using pmset command
@@ -77,18 +108,28 @@ def main():
 
     loop_time = 2
     today_active_time = 0 
+    last_slack_notification = time.time() - 3600
     while True:
         try:
             # Get current active user
             result = subprocess.run(['stat', '-f%Su', '/dev/console'], capture_output=True, text=True)
             active_user = result.stdout.strip()
-            print(f"\nActive user: {active_user} - Target User: {TARGET_USER} with daily active time {today_active_time:.0f}/{MAX_SESSION_TIME} seconds")
+            message = f"\nActive user: {active_user} - Target User: {TARGET_USER} with daily active time {today_active_time:.0f}/{MAX_SESSION_TIME} seconds"
+            print(message)
             
             if is_user_active(TARGET_USER):
                 today_active_time = update_daily_active_time(loop_time)
                 if today_active_time >= MAX_SESSION_TIME:
-                    print(f"Daily active time {today_active_time:.0f} seconds limit exceeded {MAX_SESSION_TIME} seconds. Locking screen...")
+                    current_time = time.time()
+                    if current_time - last_slack_notification >= SLACK_NOTIFICATION_INTERVAL:
+                        message1 = f"Daily active time limit exceeded for user {TARGET_USER}. Active time: {today_active_time:.0f}s / {MAX_SESSION_TIME}s"
+                        print(message1)
+                        message = message + "\n" + message1
                     lock_screen()
+            current_time = time.time()
+            if current_time - last_slack_notification >= SLACK_NOTIFICATION_INTERVAL:
+                send_slack_notification(message)
+                last_slack_notification = current_time
             time.sleep(loop_time)
         except KeyboardInterrupt:
             print("\n\nStopping user session monitor...")
