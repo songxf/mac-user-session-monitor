@@ -39,23 +39,38 @@ def get_current_date():
     """Get the current date as a string"""
     return str(date.today())
 
+def get_daily_active_time():
+    """
+    Get the current daily active time for today
+    
+    Returns:
+        int: The active time in seconds for today, or 0 if not set
+    """
+    try:
+        date_str = get_current_date()
+        return daily_active_times.get(date_str, 0)
+    except Exception as e:
+        print(f"Error getting daily active time: {e}")
+        return 0
+
 def update_daily_active_time(seconds):
     """
     Update the daily active time by the specified number of seconds
+    
+    Args:
+        seconds (int): Number of seconds to add to the daily active time
+        
+    Returns:
+        int: Updated daily active time in seconds, or None if there was an error
     """
     try:
-        try:
-            date_str = get_current_date()
-        except Exception as date_error:
-            print(f"Error getting current date: {date_error}")
-            return None
+        date_str = get_current_date()
         
         # Get or initialize today's active time
-        if date_str not in daily_active_times:
-            daily_active_times[date_str] = 0
+        current_time = get_daily_active_time()
         
         # Update active time
-        daily_active_times[date_str] += seconds
+        daily_active_times[date_str] = current_time + seconds
         
         return daily_active_times[date_str]
     except Exception as e:
