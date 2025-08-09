@@ -138,7 +138,7 @@ def main():
     update_daily_active_time(today_active_time)
     print(f"Initial active time: {today_active_time} seconds")
     
-    loop_time = 2
+    loop_time = 5
     last_slack_notification = time.time() - 3600
     while True:
         try:
